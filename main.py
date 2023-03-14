@@ -1,6 +1,50 @@
 import os
+import time
+from queue import Queue
+from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import QApplication, QFileDialog, QLabel, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, \
     QListWidget
+
+
+class ImageAudioCombiner(QThread):
+    progress_signal = pyqtSignal(int)
+    finished_signal = pyqtSignal()
+
+    def __init__(self, image_file, audio_files, output_folder, parent=None):
+        super().__init__(parent)
+        self.image_file = image_file
+        self.audio_files = audio_files
+        self.output_folder = output_folder
+        self.paused = False
+
+    def pause(self):
+        self.paused = True
+
+    def unpause(self):
+        self.paused = False
+
+    def run(self):
+        if not os.path.exists(self.output_folder):
+            os.makedirs(self.output_folder)
+
+        total_files = self.audio_files.qsize()
+        current_file = 1
+
+        while not self.audio_files.empty():
+            if self.paused:
+                time.sleep(0.5)
+                continue
+
+            audio_file = self.audio_files.get()
+            output_file = os.path.join(self.output_folder, os.path.splitext(os.path.basename(audio_file))[0] + ".mp4")
+
+            command = f'ffmpeg -loop 1 -i "{self.image_file}" -i "{audio_file}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest "{output_file}"'
+            os.system(command)
+
+            self.progress_signal.emit(int(current_file / total_files * 100))
+            current_file += 1
+
+        self.finished_signal.emit()
 
 
 class MainWindow(QWidget):
@@ -58,7 +102,11 @@ class MainWindow(QWidget):
         combine_button.clicked.connect(self.combine)
         layout.addWidget(combine_button)
 
+        self.progress_label = QLabel("Progress: 0%")
+        layout.addWidget(self.progress_label)
+
         self.setLayout(layout)
+        self.setWindowTitle("Image Audio Combiner")
         self.show()
 
     def update_audio_remove_button(self):
@@ -116,7 +164,47 @@ class MainWindow(QWidget):
             return
         if not self.output_file:
             return
-        combine_audio_and_image(self.image_file, self.audio_files, self.output_file)
+        self.combine_button.setEnabled(False)
+        self.pause_button.setEnabled(True)
+
+        self.image_label.setEnabled(False)
+        self.image_remove_button.setEnabled(False)
+        self.audio_list.setEnabled(False)
+        self.audio_remove_button.setEnabled(False)
+        self.output_folder.setEnabled(False)
+
+        self.progress_label.setText("Progress: 0%")
+
+        self.combiner_thread = ImageAudioCombiner(self.image_file, self.audio_files, self.output_folder)
+        self.combiner_thread.progress_signal.connect(self.update_progress_label)
+        self.combiner_thread.finished_signal.connect(self.combine_finished)
+        self.combiner_thread.start()
+
+    def update_progress_label(self, progress):
+        self.progress_label.setText(f"Progress: {progress}%")
+
+    def pause(self):
+        if not self.combiner_thread:
+            return
+
+        if self.pause_button.text() == "Pause":
+            self.combiner_thread.pause()
+            self.pause_button.setText("Resume")
+        else:
+            self.combiner_thread.unpause()
+            self.pause_button.setText("Pause")
+
+    def combine_finished(self):
+        self.combine_button.setEnabled(True)
+        self.pause_button.setEnabled(False)
+
+        self.image_label.setEnabled(True)
+        self.image_remove_button.setEnabled(True)
+        self.audio_list.setEnabled(True)
+        self.audio_remove_button.setEnabled(True)
+        self.output_folder.setEnabled(True)
+
+        self.progress_label.setText("Progress: 100%")
 
 
 def combine_audio_and_image(image_file, audio_files, output_file):
