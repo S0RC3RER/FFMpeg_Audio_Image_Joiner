@@ -1,6 +1,6 @@
 import os
 import time
-from queue import Queue
+# from queue import Queue
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import QApplication, QFileDialog, QLabel, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, \
     QListWidget
@@ -38,7 +38,8 @@ class ImageAudioCombiner(QThread):
             audio_file = self.audio_files.get()
             output_file = os.path.join(self.output_folder, os.path.splitext(os.path.basename(audio_file))[0] + ".mp4")
 
-            command = f'ffmpeg -loop 1 -i "{self.image_file}" -i "{audio_file}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest "{output_file}"'
+            command = f'ffmpeg -loop 1 -i "{self.image_file}" -i "{audio_file}" -c:v libx264 -tune stillimage -c:a ' \
+                      f'aac -b:a 192k -pix_fmt yuv420p -shortest "{output_file}"'
             os.system(command)
 
             self.progress_signal.emit(int(current_file / total_files * 100))
@@ -142,13 +143,6 @@ class MainWindow(QWidget):
             self.audio_files.extend(audio_files)
             for audio_file in audio_files:
                 self.audio_list.addItem(audio_file)
-
-    def update_audio_remove_button(self):
-        selected_items = self.audio_list.selectedItems()
-        if selected_items:
-            self.audio_remove_button.setEnabled(True)
-        else:
-            self.audio_remove_button.setEnabled(False)
 
     def select_output_file(self):
         output_file, _ = QFileDialog.getSaveFileName(self, "Save Output File", "", "Video Files (*.mp4)")
