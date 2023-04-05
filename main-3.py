@@ -148,7 +148,7 @@ class Application(tk.Tk):
             messagebox.showerror("Error", "Please select at least one audio file")
             return
 
-        # self.output_file = filedialog.asksaveasfilename(initialdir=".", title="Save Video",
+        # self.output_folder = filedialog.asksaveasfilename(initialdir=".", title="Save Video",
         #                                                 filetypes=(("MP4 Files", "*.mp4"), ("AVI Files", "*.avi")))
         self.output_file = "C:/Users/lower/Videos/test.mp4"
         # TODO - add a check to see if the output file already exists/overwrite option

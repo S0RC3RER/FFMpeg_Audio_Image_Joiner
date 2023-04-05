@@ -31,6 +31,10 @@ class ImageAudioCombiner(QThread):
         current_file = 1
 
         while not self.audio_files.empty():
+            if self.cancel:  # Check the cancel flag
+                self.finished_signal.emit()
+                return  # Exit the loop
+
             if self.paused:
                 time.sleep(0.5)
                 continue
@@ -53,7 +57,7 @@ class MainWindow(QWidget):
         super().__init__()
         self.image_file = ""
         self.audio_files = []
-        self.output_file = ""
+        self.output_folder = ""
         self.initUI()
 
     def initUI(self):
@@ -95,13 +99,20 @@ class MainWindow(QWidget):
 
         # Output selection button
         output_button = QPushButton("Select Output File")
-        output_button.clicked.connect(self.select_output_file)
+        output_button.clicked.connect(self.select_output_folder)
         layout.addWidget(output_button)
 
         # Combine button
         combine_button = QPushButton("Combine")
         combine_button.clicked.connect(self.combine)
         layout.addWidget(combine_button)
+
+        # Cancel button
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(self.cancel)
+        cancel_button.setEnabled(False)
+        layout.addWidget(cancel_button)
+        self.cancel_button = cancel_button
 
         self.progress_label = QLabel("Progress: 0%")
         layout.addWidget(self.progress_label)
@@ -144,10 +155,10 @@ class MainWindow(QWidget):
             for audio_file in audio_files:
                 self.audio_list.addItem(audio_file)
 
-    def select_output_file(self):
-        output_file, _ = QFileDialog.getSaveFileName(self, "Save Output File", "", "Video Files (*.mp4)")
-        if output_file:
-            self.output_file = output_file
+    def select_output_folder(self):
+        output_folder, _ = QFileDialog.getExistingDirectory(self, "Save Output Folder", "")
+        if output_folder:
+            self.output_folder = output_folder
 
     def combine(self):
         if not self.image_file:
@@ -156,10 +167,11 @@ class MainWindow(QWidget):
         if not self.audio_files:
             self.audio_list.addItem("No audio files selected.")
             return
-        if not self.output_file:
+        if not self.output_folder:
             return
         self.combine_button.setEnabled(False)
         self.pause_button.setEnabled(True)
+        self.cancel_button.setEnabled(True)  # Enable the cancel button
 
         self.image_label.setEnabled(False)
         self.image_remove_button.setEnabled(False)
@@ -169,10 +181,23 @@ class MainWindow(QWidget):
 
         self.progress_label.setText("Progress: 0%")
 
-        self.combiner_thread = ImageAudioCombiner(self.image_file, self.audio_files, self.output_folder)
-        self.combiner_thread.progress_signal.connect(self.update_progress_label)
-        self.combiner_thread.finished_signal.connect(self.combine_finished)
-        self.combiner_thread.start()
+        self.thread = ImageAudioCombiner(self.image_file, self.audio_files, self.output_folder,
+                                         cancel=False)  # Set cancel flag to False
+        self.thread.progress_signal.connect(self.update_progress)
+        self.thread.finished_signal.connect(self.finished)
+        self.thread.start()
+
+    def cancel(self):
+        self.cancel_button.setEnabled(False)
+        self.pause_button.setEnabled(False)
+        self.combine_button.setEnabled(True)
+        self.image_label.setEnabled(True)
+        self.image_remove_button.setEnabled(True)
+        self.audio_list.setEnabled(True)
+        self.audio_remove_button.setEnabled(True)
+        self.output_folder.setEnabled(True)
+        self.progress_label.setText("Cancelled.")
+        self.thread.pause()
 
     def update_progress_label(self, progress):
         self.progress_label.setText(f"Progress: {progress}%")
@@ -201,13 +226,13 @@ class MainWindow(QWidget):
         self.progress_label.setText("Progress: 100%")
 
 
-def combine_audio_and_image(image_file, audio_files, output_file):
-    audio_str = ""
-    for audio_file in audio_files:
-        audio_str += f"-i {audio_file} "
-    cmd = f"ffmpeg -loop 1 -i {image_file} {audio_str} -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt " \
-          f"yuvj420p -shortest {output_file}"
-    os.system(cmd)
+# def combine_audio_and_image(image_file, audio_files, output_folder):
+#     audio_str = ""
+#     for audio_file in audio_files:
+#         audio_str += f"-i {audio_file} "
+#     cmd = f"ffmpeg -loop 1 -i {image_file} {audio_str} -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt " \
+#           f"yuvj420p -shortest {output_folder}"
+#     os.system(cmd)
 
 
 if __name__ == '__main__':

@@ -7,10 +7,10 @@ import threading
 import multiprocessing
 
 
-# def combine_audio_and_image_broken(image_file, audio_file, output_file):
+# def combine_audio_and_image_broken(image_file, audio_file, output_folder):
 #     ffmpeg_command = ffmpeg.input(image_file, loop=1)
 #     ffmpeg_command = ffmpeg_command.input(audio_file)
-#     ffmpeg_command = ffmpeg_command.output(output_file,
+#     ffmpeg_command = ffmpeg_command.output(output_folder,
 #                                            c='libx264',
 #                                            tune='stillimage',
 #                                            a='aac',
@@ -26,12 +26,12 @@ def combine_audio_and_image(image_file, audio_file, output_file):
     os.system(cmd)
 
 
-# def combine_audio_image(image_file, audio_file, output_file):
+# def combine_audio_image(image_file, audio_file, output_folder):
 #     (
 #         ffmpeg
 #         .input(image_file, loop=1)
 #         .input(audio_file)
-#         .output(output_file, c='libx264', tune='stillimage', a='aac', b='192k', pix_fmt='yuvj420p', shortest=True)
+#         .output(output_folder, c='libx264', tune='stillimage', a='aac', b='192k', pix_fmt='yuvj420p', shortest=True)
 #         .run()
 #     )
 
@@ -75,10 +75,10 @@ class Application(tk.Frame):
 
     def combine_command(self):
         self.progress.start()
-        # self.output_file = filedialog.asksaveasfilename(initialdir=".", title="Save Video",
+        # self.output_folder = filedialog.asksaveasfilename(initialdir=".", title="Save Video",
         #                                                 filetypes=(("MP4 Files", "*.mp4"), ("AVI Files", "*.avi")))
         self.output_file = "C:/Users/lower/Videos/test.mp4"
-        # combine_audio_image(self.image_file, self.audio_file, self.output_file)
+        # combine_audio_image(self.image_file, self.audio_file, self.output_folder)
         combine_audio_and_image(self.image_file, self.audio_file, self.output_file)
         self.progress.stop()
         print(f"Video Created: {self.output_file}")
