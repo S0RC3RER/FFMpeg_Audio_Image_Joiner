@@ -2,13 +2,14 @@ import os
 import time
 # from queue import Queue
 from PyQt6.QtCore import QThread, pyqtSignal
-from PyQt6.QtWidgets import QApplication, QFileDialog, QLabel, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, \
+from PyQt6.QtWidgets import QApplication, QFileDialog, QLabel, QVBoxLayout, QWidget, QPushButton, QMessageBox, \
     QListWidget
 
 
 class ImageAudioCombiner(QThread):
     progress_signal = pyqtSignal(int)
     finished_signal = pyqtSignal()
+    error_signal = pyqtSignal(str)
 
     def __init__(self, image_file, audio_files, output_folder, parent=None):
         super().__init__(parent)
@@ -25,7 +26,11 @@ class ImageAudioCombiner(QThread):
 
     def run(self):
         if not os.path.exists(self.output_folder):
-            os.makedirs(self.output_folder)
+            try:
+                os.makedirs(self.output_folder)
+            except OSError as e:
+                self.error_signal.emit(f"Error occurred while creating the output folder: {e}")
+                return
 
         total_files = self.audio_files.qsize()
         current_file = 1
@@ -42,9 +47,21 @@ class ImageAudioCombiner(QThread):
             audio_file = self.audio_files.get()
             output_file = os.path.join(self.output_folder, os.path.splitext(os.path.basename(audio_file))[0] + ".mp4")
 
+            if not os.path.isfile(self.image_file):
+                self.error_signal.emit("Invalid image file path.")
+                return
+
+            if not os.path.isfile(audio_file):
+                self.error_signal.emit(f"Invalid audio file path: {audio_file}")
+                return
+
             command = f'ffmpeg -loop 1 -i "{self.image_file}" -i "{audio_file}" -c:v libx264 -tune stillimage -c:a ' \
                       f'aac -b:a 192k -pix_fmt yuv420p -shortest "{output_file}"'
             os.system(command)
+
+            if os.system(command) != 0:
+                self.error_signal.emit(f"Error occurred while combining {audio_file}")
+                return
 
             self.progress_signal.emit(int(current_file / total_files * 100))
             current_file += 1
@@ -98,7 +115,7 @@ class MainWindow(QWidget):
         layout.addWidget(self.audio_remove_button)
 
         # Output selection button
-        output_button = QPushButton("Select Output File")
+        output_button = QPushButton("Select Output Folder")
         output_button.clicked.connect(self.select_output_folder)
         layout.addWidget(output_button)
 
@@ -185,6 +202,7 @@ class MainWindow(QWidget):
                                          cancel=False)  # Set cancel flag to False
         self.thread.progress_signal.connect(self.update_progress)
         self.thread.finished_signal.connect(self.finished)
+        self.thread.error_signal.connect(self.handle_error)
         self.thread.start()
 
     def cancel(self):
@@ -224,6 +242,9 @@ class MainWindow(QWidget):
         self.output_folder.setEnabled(True)
 
         self.progress_label.setText("Progress: 100%")
+
+    def handle_error(self, message):
+        QMessageBox.warning(self, "Error", message)
 
 
 # def combine_audio_and_image(image_file, audio_files, output_folder):
