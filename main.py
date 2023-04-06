@@ -242,8 +242,9 @@ class MainWindow(QWidget):
         files and updates the corresponding label and button state accordingly.
         :return:
         """
-        output_folder, _ = QFileDialog.getExistingDirectory(self, "Save Output Folder", "")
+        output_folder = QFileDialog.getExistingDirectory(self, "Save Output Folder", "")
         if output_folder:
+            print("selection: " + output_folder)
             self.output_folder = output_folder
 
     def combine(self):
