@@ -4,6 +4,7 @@ import os
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import QApplication, QFileDialog, QLabel, QVBoxLayout, QWidget, QPushButton, QMessageBox, \
     QListWidget
+from PIL import Image
 
 
 # noinspection PyUnresolvedReferences
@@ -20,7 +21,7 @@ class ImageAudioCombiner(QThread):
     finished_signal = pyqtSignal()
     error_signal = pyqtSignal(str)
 
-    def __init__(self, image_file, audio_files, output_folder, parent=None):
+    def __init__(self, image_file: str, audio_files: list, output_folder: str, parent=None) -> None:
         """
         :param image_file: Path to image file
         :type image_file: basestring
@@ -55,10 +56,14 @@ class ImageAudioCombiner(QThread):
     # def cancel(self):
     #     self.cancel = True
 
-    def run(self):
+    def run(self) -> None:
         """
-        # TODO
-        :return:
+        The run() function is defined under the ImageAudioCombiner class. It runs a QThread that combines an image and
+        one or more audio files into MP4 video files. The thread takes an image file, a queue of audio files, and an
+        output folder as inputs. The progress of the thread is reported as an integer between 0 and 100 through the
+        progress_signal signal. When the thread finishes, the finished_signal signal is emitted. If an error occurs
+        during the process, the error_signal signal is emitted with a message describing the error.
+        :return: None
         """
         if not os.path.exists(self.output_folder):
             try:
@@ -88,7 +93,7 @@ class ImageAudioCombiner(QThread):
                 self.error_signal.emit(f"Invalid audio file path: {audio_file}")
                 return
 
-            command = f'ffmpeg -loop 1 -i "{self.image_file}" -i "{audio_file}" -c:v libx264 -tune stillimage -c:a '\
+            command = f'ffmpeg -loop 1 -i "{self.image_file}" -i "{audio_file}" -c:v libx264 -tune stillimage -c:a ' \
                       f'aac -b:a 192k -pix_fmt yuv420p -shortest -y "{output_file}"'
             os.system(command)
 
@@ -112,7 +117,11 @@ class MainWindow(QWidget):
     updating the state of buttons, and launching and canceling the image and audio file combination thread.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """
+        Initialize the main window of the GUI application.
+        :return: None
+        """
         super().__init__()
         self.combine_button = None
         self.output_button = None
@@ -197,7 +206,7 @@ class MainWindow(QWidget):
         self.setWindowTitle("Image Audio Combiner")
         self.show()
 
-    def update_audio_remove_button(self):
+    def update_audio_remove_button(self) -> None:
         """
         A method of the MainWindow class that updates the state of the "Remove Selected Audio Files" button based on
         whether any audio files are currently selected in the audio file list.
@@ -209,7 +218,7 @@ class MainWindow(QWidget):
         else:
             self.audio_remove_button.setEnabled(False)
 
-    def remove_image_file(self):
+    def remove_image_file(self) -> None:
         """
         A method of the MainWindow class that removes the currently selected image file and updates the corresponding
         label and button state accordingly.
@@ -219,11 +228,11 @@ class MainWindow(QWidget):
         self.image_label.setText("No image file selected.")
         self.image_remove_button.setEnabled(False)
 
-    def remove_selected_audio_files(self):
+    def remove_selected_audio_files(self) -> None:
         """
         A method of the MainWindow class that removes the currently selected audio files from the audio file list and
         updates the corresponding button state accordingly.
-        :return:
+        :return: None
         """
         selected_items = self.audio_list.selectedItems()
         for item in selected_items:
@@ -231,11 +240,11 @@ class MainWindow(QWidget):
             self.audio_list.takeItem(self.audio_list.row(item))
         self.update_audio_remove_button()
 
-    def select_image_file(self):
+    def select_image_file(self) -> None:
         """
         A method of the MainWindow class that opens a file dialog for selecting an image file and updates the
         corresponding label and button state accordingly.
-        :return:
+        :return: None
         """
         image_file, _ = QFileDialog.getOpenFileName(self, "Select Image File", "",
                                                     "Image Files (*.jpg *.jpeg *.png *.bmp)")
@@ -244,15 +253,28 @@ class MainWindow(QWidget):
             if not os.path.isfile(image_file):
                 QMessageBox.critical(self, "Error", "Invalid image file path.")
                 return
+            try:
+                image = Image.open(image_file)
+                width, height = image.size
+                if width % 2 != 0:
+                    width += 1
+                if height % 2 != 0:
+                    height += 1
+                image = image.resize((width, height))
+                image.save(image_file)
+            except Exception as e:
+                self.handle_error(str(e))
+                return
+
             self.image_file = image_file
             self.image_label.setText(image_file)
             self.image_remove_button.setEnabled(True)
 
-    def select_audio_files(self):
+    def select_audio_files(self) -> None:
         """
         A method of the MainWindow class that opens a file dialog for selecting one or more audio files and updates the
         corresponding list and button state accordingly.
-        :return:
+        :return: None
         """
         audio_files, _ = QFileDialog.getOpenFileNames(self, "Select Audio Files", "", "Audio Files (*.mp3 *.wav *.ogg)")
 
@@ -261,11 +283,11 @@ class MainWindow(QWidget):
             for audio_file in audio_files:
                 self.audio_list.addItem(audio_file)
 
-    def select_output_folder(self):
+    def select_output_folder(self) -> None:
         """
         A method of the MainWindow class that opens a file dialog for selecting an output folder for the combined video
         files and updates the corresponding label and button state accordingly.
-        :return:
+        :return: None
         """
         # personal choice to use native dialog
         output_folder = QFileDialog.getExistingDirectory(self, "Save Output Folder", "")
@@ -274,12 +296,12 @@ class MainWindow(QWidget):
             self.output_folder = output_folder
             self.output_label.setText(output_folder)
 
-    def combine(self):
+    def combine(self) -> None:
         """
         A method of the MainWindow class that creates an instance of the ImageAudioCombiner thread with the selected
         image file, audio files, and output folder as inputs, connects its signals to the corresponding GUI components,
         and starts the thread.
-        :return:
+        :return: None
         """
         if not self.image_file:
             self.image_label.setText("No image file selected.")
@@ -311,7 +333,6 @@ class MainWindow(QWidget):
         self.worker.error_signal.connect(self.handle_error)
         self.thread.start()
 
-
     # def cancel(self):
     #     """
     #     A method of the MainWindow class that sets a flag to cancel the currently running ImageAudioCombiner thread,
@@ -329,7 +350,7 @@ class MainWindow(QWidget):
     #     self.progress_label.setText("Cancelled.")
     #     self.thread.pause()
 
-    def update_progress_label(self, progress):
+    def update_progress_label(self, progress: int) -> None:
         """
         :param progress: progress percentage
         :type progress: int
@@ -351,9 +372,9 @@ class MainWindow(QWidget):
     #         self.combiner_thread.unpause()
     #         self.pause_button.setText("Pause")
 
-    def combine_finished(self):
+    def combine_finished(self) -> None:
         """
-        :return:
+        :return: None
         """
         self.combine_button.setEnabled(True)
         # self.pause_button.setEnabled(False)
@@ -365,11 +386,15 @@ class MainWindow(QWidget):
 
         self.progress_label.setText("Progress: 100%")
 
-    def handle_error(self, message):
+        QMessageBox.information(self, "Information", "Combination process completed successfully!")
+        os.startfile(self.output_folder)  # Open the output folder
+        QApplication.quit()  # End the program
+
+    def handle_error(self, message: str) -> None:
         """
         :param message: error message
         :type message: basestring
-        :return:
+        :return: None
         """
         QMessageBox.warning(self, "Error", message)
 
