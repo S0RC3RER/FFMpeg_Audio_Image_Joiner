@@ -2,6 +2,10 @@
 
 This Python program allows you to combine an image file with one or more audio files and create MP4 video files. The program provides a graphical user interface (GUI) built using PyQt6.
 
+## Backstory
+
+I wrote this program to assist an elderly relative who has a large store of audio files and wanted to share them with others. Since YouTube does not allow audio files and MP4 files that don't have video data (i.e a black screen), I created this application to make the process of creating compliant MP4's easy.
+
 ## Features
 
 - Select an image file to be combined with the audio files.
