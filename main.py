@@ -304,10 +304,10 @@ class MainWindow(QWidget):
         :return: None
         """
         if not self.image_file:
-            self.image_label.setText("No image file selected.")
+            QMessageBox.critical(self, "Error", "No image file selected.")
             return
         if not self.audio_files:
-            self.audio_list.addItem("No audio files selected.")
+            QMessageBox.critical(self, "Error", "No audio files selected.")
             return
         if not self.output_folder:
             return
