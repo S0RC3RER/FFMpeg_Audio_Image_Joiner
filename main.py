@@ -25,8 +25,8 @@ class ImageAudioCombiner(QThread):
         """
         :param image_file: Path to image file
         :type image_file: basestring
-        :param audio_files: Path to audio file
-        :type audio_files: basestring
+        :param audio_files: List of paths to audio files
+        :type audio_files: list
         :param output_folder: Path to output folder
         :type output_folder: basestring
         :param parent:
