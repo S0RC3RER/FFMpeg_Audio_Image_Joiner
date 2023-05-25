@@ -93,8 +93,7 @@ class ImageAudioCombiner(QThread):
                 self.error_signal.emit(f"Invalid audio file path: {audio_file}")
                 return
 
-            command = f'ffmpeg -loop 1 -i "{self.image_file}" -i "{audio_file}" -c:v libx264 -tune stillimage -c:a ' \
-                      f'aac -b:a 192k -pix_fmt yuv420p -shortest -y "{output_file}"'
+            command = f'ffmpeg -loop 1 -i "{self.image_file}" -i "{audio_file}" -c:v libx264 -preset superfast -tune stillimage -c:a aac -b:a 128k -movflags +faststart -pix_fmt yuv420p -shortest -y "{output_file}"'
             os.system(command)
 
             if os.system(command) != 0:
