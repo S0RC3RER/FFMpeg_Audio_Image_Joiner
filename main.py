@@ -3,6 +3,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import QApplication, QFileDialog, QLabel, QVBoxLayout, QWidget, QPushButton, QMessageBox, \
     QListWidget
 from PIL import Image
+from ffmpeg_progress_yield import FfmpegProgress
 
 
 # noinspection PyUnresolvedReferences
@@ -16,6 +17,7 @@ class ImageAudioCombiner(QThread):
     is emitted with a message describing the error.
     """
     progress_signal = pyqtSignal(int)
+    video_progress_signal = pyqtSignal(str)
     finished_signal = pyqtSignal()
     error_signal = pyqtSignal(str)
 
@@ -80,6 +82,7 @@ class ImageAudioCombiner(QThread):
             # if self.paused:
             #     time.sleep(0.5)
             #     continue
+            self.video_progress_signal.emit(f"Processing file {current_file} of {total_files}...")
             audio_file = self.audio_files.pop()
             output_file = os.path.join(self.output_folder, os.path.splitext(os.path.basename(audio_file))[0] + ".mp4")
 
@@ -91,14 +94,13 @@ class ImageAudioCombiner(QThread):
                 self.error_signal.emit(f"Invalid audio file path: {audio_file}")
                 return
 
-            command = f'ffmpeg -loop 1 -i "{self.image_file}" -i "{audio_file}" -c:v libx264 -preset superfast -tune stillimage -c:a aac -b:a 128k -movflags +faststart -crf 28 -pix_fmt yuv420p -shortest -y "{output_file}"'
-            os.system(command)
+            command = ["ffmpeg", "-i", audio_file, "-loop", "1", "-i", self.image_file, "-c:v", "libx264", "-preset",
+                       "superfast", "-tune", "stillimage", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
+                       "-crf", "28", "-pix_fmt", "yuv420p", "-shortest", "-y", output_file]
+            ff = FfmpegProgress(command)
+            for progress in ff.run_command_with_progress():
+                self.progress_signal.emit(int(progress))
 
-            if os.system(command) != 0:
-                self.error_signal.emit(f"Error occurred while combining {audio_file}")
-                return
-
-            self.progress_signal.emit(int(current_file / total_files * 100))
             current_file += 1
 
         self.finished_signal.emit()
@@ -126,6 +128,7 @@ class MainWindow(QWidget):
         self.audio_button = None
         self.image_button = None
         self.progress_label = None
+        self.video_progress_label = None
         self.thread = None
         self.worker = None
         self.audio_remove_button = None
@@ -198,6 +201,9 @@ class MainWindow(QWidget):
 
         self.progress_label = QLabel("Progress: 0%")
         layout.addWidget(self.progress_label)
+
+        self.video_progress_label = QLabel("Processing file 0 of 0...")
+        layout.addWidget(self.video_progress_label)
 
         self.setLayout(layout)
         self.setWindowTitle("Image Audio Combiner")
@@ -323,6 +329,7 @@ class MainWindow(QWidget):
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
         self.worker.progress_signal.connect(self.update_progress_label)
+        self.worker.video_progress_signal.connect(self.update_video_progress_label)
         self.worker.finished_signal.connect(self.combine_finished)
         self.worker.finished_signal.connect(self.thread.quit)
         self.worker.finished_signal.connect(self.worker.deleteLater)
@@ -354,6 +361,14 @@ class MainWindow(QWidget):
         :return: None
         """
         self.progress_label.setText(f"Progress: {progress}%")
+
+    def update_video_progress_label(self, video_progress: str) -> None:
+        """
+        :param progress: progress percentage
+        :type video_progress: basestring
+        :return: None
+        """
+        self.video_progress_label.setText(video_progress)
 
     # def pause(self):
     #     """
