@@ -307,23 +307,24 @@ class MainWindow(QWidget):
         :return: None
         """
         if not self.image_file:
-            QMessageBox.critical(self, "Error", "No image file selected.")
+            self.handle_error("No image file selected.")
             return
         if not self.audio_files:
-            QMessageBox.critical(self, "Error", "No audio files selected.")
+            self.handle_error("No audio files selected.")
             return
         if not self.output_folder:
+            self.handle_error("No output folder selected.")
             return
-        # self.combine_button.setEnabled(False)
-        # self.pause_button.setEnabled(True)
-        # self.cancel_button.setEnabled(True)  # Enable the cancel button
-        # self.image_label.setEnabled(False)
-        # self.image_remove_button.setEnabled(False)
-        # self.audio_list.setEnabled(False)
-        # self.audio_remove_button.setEnabled(False)
-        # self.output_folder.setEnabled(False)
 
-        # self.progress_label.setText("Progress: 0%")
+        self.combine_button.setEnabled(False)
+        self.image_button.setEnabled(False)
+        self.audio_button.setEnabled(False)
+        self.output_button.setEnabled(False)
+        # self.pause_button.setEnabled(True)
+        # self.cancel_button.setEnabled(True)
+        self.image_remove_button.setEnabled(False)
+        self.audio_remove_button.setEnabled(False)
+
         self.thread = QThread()
         self.worker = ImageAudioCombiner(self.image_file, self.audio_files, self.output_folder)
         self.worker.moveToThread(self.thread)
@@ -333,7 +334,6 @@ class MainWindow(QWidget):
         self.worker.finished_signal.connect(self.combine_finished)
         self.worker.finished_signal.connect(self.thread.quit)
         self.worker.finished_signal.connect(self.worker.deleteLater)
-        # self.thread.finished_signal.connect(self.thread.deleteLater)
         self.worker.error_signal.connect(self.handle_error)
         self.thread.start()
 
@@ -388,13 +388,6 @@ class MainWindow(QWidget):
         """
         :return: None
         """
-        self.combine_button.setEnabled(True)
-        # self.pause_button.setEnabled(False)
-        self.image_label.setEnabled(True)
-        self.image_remove_button.setEnabled(True)
-        self.audio_list.setEnabled(True)
-        self.audio_remove_button.setEnabled(True)
-        self.output_button.setEnabled(True)
 
         self.progress_label.setText("Progress: 100%")
 

@@ -1,0 +1,4 @@
+ffmpeg_progress_yield==0.7.4
+Pillow==9.5.0
+PyQt6==6.5.0
+PyQt6_sip==13.4.1
